@@ -3,10 +3,11 @@ import os
 import glob 
 import sys
 import requests
-import eventlet
+# import eventlet
 import multiprocessing.pool as Pool
 
 fs = glob.glob('*e55e')
+import pdb; pdb.set_trace()
 files = []
 for f in fs:
     with open(f,'r', encoding = 'utf8')as f:
@@ -21,7 +22,7 @@ def get_data(url):
     x = response.text.split('class="lead"')[1].split('</p>')[0]
     response.close()
     return x
-num_procs = os.cpu_count()
+num_procs = 4
 print(num_procs)
 # eventlet.monkey_patch()
 results = []
