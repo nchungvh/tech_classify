@@ -16,11 +16,16 @@ import json
 from tqdm import tqdm
 from sklearn.model_selection import StratifiedShuffleSplit
 from torch.utils.data import TensorDataset
+from pytorch_lightning.callbacks import ModelCheckpoint
+
+
+from sentence_transformers import SentenceTransformer
+model = SentenceTransformer('distiluse-base-multilingual-cased-v2')
 
 device = torch.device('cuda')
 
-tokenizer = BertTokenizer.from_pretrained('bert-base-multilingual-cased')
-bert_model = BertModel.from_pretrained('bert-base-multilingual-cased').to(device)
+# tokenizer = BertTokenizer.from_pretrained('bert-base-multilingual-cased')
+# bert_model = BertModel.from_pretrained('bert-base-multilingual-cased').to(device)
 
 class Model(nn.Module):
     def __init__(self, input_dim):
@@ -38,7 +43,7 @@ class Model(nn.Module):
 
     def forward(self, feature):
         feature = self.ln1(feature)
-        feature = self.dropout(feature)
+        # feature = self.dropout(feature)
         feature = self.relu(feature)
         # feature = self.ln2(feature)
         # feature = self.relu(feature)
@@ -90,6 +95,7 @@ class LitModule(pl.LightningModule):
         X, y = batch
         y_hat = self.model(X)
         self.log('val_acc_step', self.val_acc(y_hat, y))
+        self.log('val_loss', self.loss(y_hat, y))
         return {'val_loss': self.loss(y_hat, y)}
 
     def validation_epoch_end(self, outputs):
@@ -112,9 +118,12 @@ class LitModule(pl.LightningModule):
         return DataLoader(dataset=self.test_data, batch_size=self.batch_size)
 
 
+def get_sentence_emb(sent):
+    return model.encode(sent)
+
 def get_bert_embeddings(word):
     word = ' '.join(word.replace('_',' ').replace('#','').split())
-    input_ids = torch.tensor([tokenizer.encode(word, add_special_tokens=True)])                                                                                                                       
+    input_ids = torch.tensor([tokenizer.encode(word, add_special_tokens=True, max_length=512, truncation=True)])                                                                                                                       
     input_ids = input_ids.to(device)                                                                                
     import pdb                                                                                                       
     #pdb.set_trace()                                                                                               
@@ -125,7 +134,27 @@ def get_bert_embeddings(word):
     output = np.reshape(last_hidden_states, (-1, last_hidden_states.shape[-1])).sum(0)
     return output
 
-def main(args):
+def load_data(paths, is_tech):
+    X = []
+    Y = []
+    for path in paths:
+        js = json.load(open(path))
+        for k in tqdm(js):
+            v = js[k]
+            if len(v) == 0:
+                continue
+            # import pdb; pdb.set_trace()
+            try:
+                X.append(get_sentence_emb(v))
+                if is_tech:
+                    Y.append(1)
+                else:
+                    Y.append(0)
+            except:
+                print(v)
+    return np.asarray(X), np.asarray(Y).astype(int)
+
+def load_dbpedia_data():
     # x = json.load(open('abtract_data/output_0_50000.json'))
     x = json.load(open('test_data.json'))
     # x = json.load(open('small_data.json'))
@@ -135,17 +164,34 @@ def main(args):
     X = []
     Y = []
     for i in tqdm(x):
-        X.append(get_bert_embeddings(i['abtract']))
+        X.append(get_sentence_emb(i['abtract']))
         Y.append(i['isTechnology'])
     X = np.asarray(X)
     Y = np.asarray(Y).astype(int)
+    return X, Y
+
+def main(args):
+    
+    # X_t, Y_t = load_data(["wiki_abstracts/abtract_tech.json", "wiki_abstracts/empty_tech_intro.json"], True)
+    # X_n, Y_n = load_data(["wiki_abstracts/abtract_non_tech.json", "wiki_abstracts/empty_non_tech_intro.json"], False)
+
+    # np.savez("abstract_embs.npz", X_t, Y_t, X_n, Y_n)
+    data = np.load("abstract_embs.npz")
+    X_t, Y_t, X_n, Y_n = data['arr_0'], data['arr_1'], data['arr_2'], data['arr_3']
+    Y_n = Y_n - 1
+    num_samples = X_t.shape[0]
+
+    X = np.concatenate((X_t, X_n[:num_samples]), axis=0)
+    Y = np.concatenate((Y_t, Y_n[:num_samples]), axis=0)
 
     print(X.shape)
     print(Y.shape)
 
-    model = LitModule(768, X, Y, 32)
+    model = LitModule(512, X, Y, 32)
 
-    trainer = pl.Trainer.from_argparse_args(args, max_epochs=100)
+    checkpoint_callback = ModelCheckpoint(monitor='val_acc_step')
+
+    trainer = pl.Trainer.from_argparse_args(args, max_epochs=100, callbacks=[checkpoint_callback])
 
     trainer.fit(model)
 
