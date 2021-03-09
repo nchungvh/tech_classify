@@ -12,6 +12,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-xy', '--xy', dest='xy', type=str, help='Path to X,Y np array abstract_embs.npz')
 parser.add_argument('-ck','--checkpoint', dest='ckpt', type=str, help='Path to pytorch-lightning model checkpoint')
 parser.add_argument('-gd', '--graph_dict', dest='gd', type=str, help='Graph dict type')
+parser.add_argument('-gp', '--graph_dict_path', dest='gp', type=str, help='Path to graph dict')
 parser.add_argument('-ab', '--abs', dest='abs', type=str, help='Path to abstracts')
 parser.add_argument('-out', '--out', dest='out', type=str, help='Path to output folder')
 args = parser.parse_args()
@@ -97,19 +98,21 @@ def extract_abstract(entity):
     return x
 
 def load_graph_dict(graph_dict_type):
-    if graph_dict_type == 'hashtag':
-        with open(args.abs + "/weighted_twitter_" + graph_dict_type + "_temp.json") as f:
-            return json.load(f)
-    else:
-        with open(args.abs + "/weighted_filtered_" + graph_dict_type + "_temp.json") as f:
-            return json.load(f)
+    # if graph_dict_type == 'hashtag':
+    #     with open(args.gp + "/weighted_twitter_" + graph_dict_type + "_temp.json") as f:
+    #         return json.load(f)
+    # else:
+    #     with open(args.gp + "/weighted_filtered_" + graph_dict_type + "_temp.json") as f:
+    #         return json.load(f)
+    with open(args.gp + "/standard_" + graph_dict_type + ".json") as f:
+        return json.load(f)
 
 def run_tech_classifier(classifier, graph_dict, ent2abs, sent_model):
     new_graph_dict = {}
     for k in tqdm(graph_dict.keys()):
         new_val = {}
         for entity in graph_dict[k]:
-            ent = entity.lower().replace("#", "")
+            ent = entity.lower().replace("#", "").replace("?","").replace(".","")
             if ent not in ent2abs:
                 try:
                     abstract = extract_abstract(entity)
@@ -118,6 +121,8 @@ def run_tech_classifier(classifier, graph_dict, ent2abs, sent_model):
                     continue
             else:
                 abstract = ent2abs[ent]
+            if abstract == '':
+                continue
             sent_emb = sent_model.encode(abstract)
             logit = classifier(torch.Tensor(sent_emb))
             if logit >= 0.5:
@@ -136,7 +141,8 @@ def run_regex_filters(fils, graph_dict):
     for k in graph_dict.keys():
         new_val = {}
         for name in graph_dict[k]:
-            if any(regex.search(name) for regex in filter_regexes):
+            entity = name.lower().replace("#","").replace("?","").replace(".","").capitalize()
+            if any(regex.search(entity) for regex in filter_regexes):
                 continue
             new_val[name] = graph_dict[k][name]
         new_db[k] = new_val
