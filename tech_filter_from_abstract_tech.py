@@ -9,7 +9,8 @@ from tqdm import tqdm
 parser = argparse.ArgumentParser()
 parser.add_argument('-gd', '--graph_dict', dest='gd', type=str, help='Graph dict type')
 parser.add_argument('-gp', '--graph_dict_path', dest='gp', type=str, help='Path to graph dict')
-parser.add_argument('-out', '--out', dest='out', type=str, help='Path to output folder')
+parser.add_argument('-ab', '--abstract', dest='ab', type=str, help='Path to abstract_tech_ path')
+parser.add_argument('-o', '--out', dest='out', type=str, help='Path to output folder')
 args = parser.parse_args()
 
 
@@ -24,7 +25,7 @@ def load_graph_dict(graph_dict_type):
         return json.load(f)
 
 def load_abstract_tech(graph_dict_type):
-    with open(args.gp + "/abstract_tech_" + graph_dict_type + ".json") as f:
+    with open(args.ab + "/abstract_tech_" + graph_dict_type + ".json") as f:
         return json.load(f)
 
 if __name__ == '__main__':
