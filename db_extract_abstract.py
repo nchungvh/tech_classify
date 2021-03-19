@@ -9,6 +9,8 @@ import pickle
 parser = argparse.ArgumentParser()
 parser.add_argument('-p','--path', dest='path', type=str, help='Path to a graph dict')
 parser.add_argument('-o','--out', dest='out', type=str, help='Name suffix for output')
+parser.add_argument('-f','--folder', dest='folder', type=str, help='Folder to store output abstracts')
+
 args = parser.parse_args()
 
 missing = []
@@ -87,7 +89,7 @@ for subindex in range(0,len(entities), 1000):
     for i in range(len(results)):
         output[entities[i]] = results[i]
     print(len(results))
-    with open("abstracts/{}_dbabstract_{}.json".format(args.out, subindex), 'w', encoding='utf8') as outfile:
+    with open(args.folder + "/abstracts/{}_dbabstract_{}.json".format(args.out, subindex), 'w', encoding='utf8') as outfile:
         json.dump(output, outfile, ensure_ascii=False)
 
 if len(missing) > 0:
