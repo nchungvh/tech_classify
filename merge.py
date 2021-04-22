@@ -15,6 +15,9 @@ parser.add_argument('-t','--twitter', dest='twitter', type=float, help='Weight f
 parser.add_argument('-ht','--hashtag', dest='hashtag', type=float, help='Weight for weighted_filtered_hashtag')
 parser.add_argument('-w','--website', dest='website', type=float, help='Weight for weighted_filtered_website')
 parser.add_argument('-o','--output', dest='output', type=str, help='Output path', default='.')
+parser.add_argument('--avg', dest='avg', action='store_true')
+parser.add_argument('--no-avg', dest='avg', action='store_false')
+parser.set_defaults(avg=True)
 args = parser.parse_args()
 
 w = [args.indeed, args.patent, args.crunch, args.twitter, args.hashtag, args.website]
@@ -138,15 +141,28 @@ res['nodes'] = [
         'test': False
     }
     for node in res['nodes']]
-res['links'] = [
-    {
-        'source': link['source'],
-        'target': link['target'],
-        'weight': link['weight'],
-        'test_removed': False,
-        'train_removed': False
-    }
-    for link in res['links']]
+
+if args.avg:
+    res['links'] = [
+        {
+            'source': link['source'],
+            'target': link['target'],
+            'weight': link['weight']/sum(w),
+            'test_removed': False,
+            'train_removed': False
+        }
+        for link in res['links']]
+else:
+    res['links'] = [
+        {
+            'source': link['source'],
+            'target': link['target'],
+            'weight': link['weight'],
+            'test_removed': False,
+            'train_removed': False
+        }
+        for link in res['links']]
+
 
 w_str = "_".join([str(e) for e in w])
 
