@@ -25,8 +25,12 @@ def load_graph_dict(graph_dict_type):
         return json.load(f)
 
 def load_abstract_tech(graph_dict_type):
-    with open(args.ab + "/abstract_tech_" + graph_dict_type + ".json") as f:
-        return json.load(f)
+    try:
+        with open(args.ab + "/abstract_tech_" + graph_dict_type + ".json") as f:
+            return json.load(f)
+    except:
+        with open(args.ab + "/arma_tech.json") as f:
+            return json.load(f)
 
 if __name__ == '__main__':
     # import pdb;pdb.set_trace()
@@ -38,8 +42,15 @@ if __name__ == '__main__':
     for com in graph_dict:
         d = {}
         for term in graph_dict[com]:
+            # import pdb;pdb.set_trace()
+            term1 = term.replace(" ","_").replace("#","")
             if term in term2tech and term2tech[term] == 1:
                 d[term] = graph_dict[com][term]
+            if term1 in term2tech and term2tech[term1] == 1:
+                d[term1] = graph_dict[com][term]
+            term2 = term.title().replace(" ","_").replace("#","")
+            if term2 in term2tech and term2tech[term2] == 1:
+                d[term2] = graph_dict[com][term]
         new_graph_dict[com] = d
 
     with open(args.out + '/tech_filtered_' + args.gd + '.json', 'w', encoding = 'utf-8') as f:
