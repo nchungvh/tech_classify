@@ -7,9 +7,18 @@ import math
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--dfvar', dest='dfvar', type=int, help='Which variant of idf computation is used? (0 or 1)')
 parser.add_argument('-t','--tfvar', dest='tfvar', type=int, help='Which variant of tf compuration is used 0, 1 or 2')
+parser.add_argument('-b', '--black', dest='black', type=str, help='Path to a list of blacklist terms')
 parser.add_argument('-i', '--input', dest='input', type=str, help='Path to input count_term')
 parser.add_argument('-o', '--out', dest='output', type=str, help='Path to output folder')
 args = parser.parse_args()
+
+
+with open(args.black, 'r', encoding = 'utf-8') as f:
+    tab = set(json.load(f))
+    taboo = set()
+    for n in tab:
+        a = n.replace(" ","_")
+        taboo.add(a)
 
 def clean_dbpedia_name(name):
     return name.split("/")[-1]
@@ -17,12 +26,16 @@ def clean_dbpedia_name(name):
 def cal_df(graph_dict):
     df = defaultdict(int)
     for com, vals in graph_dict.items():
+        terms = set()
         if type(vals) == list:
-            terms = set()
             for v in vals:
-                terms.add(clean_dbpedia_name(v[0]))
+                name = clean_dbpedia_name(v[0])
+                if name not in taboo:
+                    terms.add(name)
         else:
-            terms = vals.keys()
+            for name in vals.keys():
+                if name not in taboo:
+                    terms.add(name)
         for term in terms:
             df[term] +=1
     return df
@@ -46,12 +59,16 @@ def cal_tf(graph_dict, variant=0, alpha=0.4):
         if type(vals) == list:
             for v in vals:
                 term = clean_dbpedia_name(v[0])
+                if term in taboo:
+                    continue
                 val = v[1]
                 tf[term] += val
                 if val >= max_tf:
                     max_tf = val
         else:
             for term, val in vals.items():
+                if term in taboo:
+                    continue
                 tf[term] += val
                 if val >= max_tf:
                     max_tf = val
