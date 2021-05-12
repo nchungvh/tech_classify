@@ -43,15 +43,16 @@ class Model(nn.Module):
 
     def forward(self, feature):
         feature = self.ln1(feature)
-        # feature = self.dropout(feature)
+        feature = self.dropout(feature)
         feature = self.relu(feature)
-        # feature = self.ln2(feature)
-        # feature = self.relu(feature)
+        feature = self.ln2(feature)
+        feature = self.relu(feature)
         # feature = self.ln3(feature)
         # feature = self.relu(feature)
         feature = self.ln4(feature)
         feature = self.relu(feature)
         feature = self.ln5(feature)
+        feature = self.sigmoid(feature)
         return feature
 
 class LitModule(pl.LightningModule):
@@ -84,7 +85,7 @@ class LitModule(pl.LightningModule):
         X, y = batch
         y_hat = self.model(X)
         loss = self.loss(y_hat, y)
-        self.log('train_acc_step', self.train_acc(y_hat, y))
+        self.log('train_acc_step', self.train_acc(y_hat, y.type(torch.LongTensor)))
         tensorboard_logs = {'train_loss': loss}
         return {'loss': loss, 'log': tensorboard_logs}
 
@@ -94,7 +95,7 @@ class LitModule(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         X, y = batch
         y_hat = self.model(X)
-        self.log('val_acc_step', self.val_acc(y_hat, y))
+        self.log('val_acc_step', self.val_acc(y_hat, y.type(torch.LongTensor)))
         self.log('val_loss', self.loss(y_hat, y))
         return {'val_loss': self.loss(y_hat, y)}
 
@@ -109,7 +110,8 @@ class LitModule(pl.LightningModule):
         return optimizer
 
     def loss(self, y_hat, y):
-        return F.binary_cross_entropy_with_logits(y_hat, y)
+        #return F.binary_cross_entropy_with_logits(y_hat, y)
+        return F.binary_cross_entropy(y_hat, y)
 
     def train_dataloader(self):
         return DataLoader(dataset=self.train_data, batch_size=self.batch_size)
@@ -178,7 +180,9 @@ def main(args):
     # np.savez("abstract_embs.npz", X_t, Y_t, X_n, Y_n)
     data = np.load("abstract_embs.npz")
     X_t, Y_t, X_n, Y_n = data['arr_0'], data['arr_1'], data['arr_2'], data['arr_3']
-    Y_n = Y_n - 1
+#     Y_n = Y_n - 1
+    import pdb
+    # pdb.set_trace()
     num_samples = X_t.shape[0]
 
     X = np.concatenate((X_t, X_n[:num_samples]), axis=0)
@@ -191,7 +195,7 @@ def main(args):
 
     checkpoint_callback = ModelCheckpoint(monitor='val_acc_step')
 
-    trainer = pl.Trainer.from_argparse_args(args, max_epochs=100, callbacks=[checkpoint_callback])
+    trainer = pl.Trainer.from_argparse_args(args, max_epochs=300, callbacks=[checkpoint_callback])
 
     trainer.fit(model)
 
