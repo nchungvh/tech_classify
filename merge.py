@@ -105,13 +105,20 @@ def add_graph(json_file, weight):
 #     print('num after/before node of merge graph: {} {}'.format(curr, count))
 
 # add_graph(db, w[0])
-add_graph(ind, args.indeed)
-add_graph(pa, args.patent)
+if args.indeed != 0:
+    add_graph(ind, args.indeed)
+
+if args.patent != 0:
+    add_graph(pa, args.patent)
 if args.crunch != 0:
     add_graph(cb, args.crunch)
-add_graph(tw, args.twitter)
-add_graph(twh, args.hashtag)
-add_graph(web, args.website)
+    
+if args.twitter != 0:
+    add_graph(tw, args.twitter)
+if args.hashtag != 0:
+    add_graph(twh, args.hashtag)
+if args.website != 0:
+    add_graph(web, args.website)
 
 # Remove edges with weight 0 
 print(nx.info(merge))
@@ -173,7 +180,7 @@ except OSError:
 else:
     print ("Successfully created the directory %s " % args.output)
 
-with open(args.output + "/merge-G_" + w_str + ".json", 'w') as outfile:
+with open("tfidf_234/merge-G_" + args.output + ".json", 'w') as outfile:
         json.dump(res, outfile)
 
 
